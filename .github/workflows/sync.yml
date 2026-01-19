@@ -48,7 +48,7 @@ jobs:
         echo "📂 Detected Repo Name: $REPO_NAME"
         
         # 2. 构造文件名 (例如: vibe-coding-cn.md)
-        FILENAME="${REPO_NAME}.md"
+        FILENAME="${REPO_NAME}.txt"
         
         # 3. 将文件名保存到 GitHub Environment 变量中，供后续步骤使用
         echo "TARGET_FILENAME=$FILENAME" >> $GITHUB_ENV
@@ -67,4 +67,4 @@ jobs:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         TARGET_FILENAME: ${{ env.TARGET_FILENAME }} # 读取上一步设置的变量
       run: |
-        python tools/upload_to_drive.py "$FILENAME"
+        python tools/upload_to_drive.py
