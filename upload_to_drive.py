@@ -1,4 +1,5 @@
 import os
+import argparse
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -17,7 +18,7 @@ def authenticate():
     )
     return build('drive', 'v3', credentials=creds)
 
-def upload_file():
+def upload_file(in_path):
     folder_id = os.environ['GDRIVE_FOLDER_ID']
     service = authenticate()
     
@@ -26,7 +27,7 @@ def upload_file():
     results = service.files().list(q=query, fields="files(id, name)").execute()
     files = results.get('files', [])
 
-    media = MediaFileUpload(FILE_TO_UPLOAD, mimetype='text/markdown')
+    media = MediaFileUpload(in_path, mimetype='text/markdown')
 
     if files:
         file_id = files[0]['id']
@@ -48,4 +49,7 @@ def upload_file():
         print(f"✅ Success: Created new file {FILE_TO_UPLOAD}")
 
 if __name__ == '__main__':
-    upload_file()
+    parser = argparse.ArgumentParser(description="Convert a code repository to a single text file for LLM context.")
+    parser.add_argument("path", nargs="?", default=".", help="Path to the repository (default: current directory)")
+    args = parser.parse_args()
+    upload_file(args.path)
