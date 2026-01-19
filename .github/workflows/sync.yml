@@ -2,10 +2,14 @@ name: Sync to NotebookLM Drive
 
 on:
   push:
-    branches: [ "main", "master" ] # 或者你想要的分支
-    paths-ignore:
-      - '*.md' # 避免自己更新文档时死循环，可根据需要调整
+    branches: [ "main" ]
   workflow_dispatch: # 允许手动触发
+    inputs:
+      target_path:
+        description: '要扫描的路径 (例如 src/ 或 .)'
+        required: true
+        default: '.'
+        type: string
 
 jobs:
   build-and-sync:
@@ -25,9 +29,13 @@ jobs:
         pip install google-api-python-client google-auth
 
     - name: Generate Context Markdown
+      # 如果是 push 触发，默认用 '.'；如果是手动触发，用输入的路径
       run: |
-        # 运行你之前的转换脚本
-        python repo2txt.py -o codebase_context.md
+        SCAN_PATH="${{ inputs.target_path }}"
+        if [ -z "$SCAN_PATH" ]; then SCAN_PATH="."; fi
+        
+        echo "Scanning path: $SCAN_PATH"
+        python repo2txt.py "$SCAN_PATH" -o codebase_context.md
 
     - name: Upload to Google Drive
       env:
