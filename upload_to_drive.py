@@ -9,6 +9,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 SERVICE_ACCOUNT_INFO = json.loads(os.environ['GDRIVE_CREDENTIALS'])
 FOLDER_ID = os.environ['GDRIVE_FOLDER_ID']
 FILE_TO_UPLOAD = 'codebase_context.md' # 这里要和 repo2txt.py 的输出一致
+print(FOLDER_ID, SERVICE_ACCOUNT_INFO)
 
 def authenticate():
     creds = service_account.Credentials.from_service_account_info(
