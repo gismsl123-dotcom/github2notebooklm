@@ -67,4 +67,4 @@ jobs:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         TARGET_FILENAME: ${{ env.TARGET_FILENAME }} # 读取上一步设置的变量
       run: |
-        python tools/upload_to_drive.py
+        python tools/upload_to_drive.py "$FILENAME"
