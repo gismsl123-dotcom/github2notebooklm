@@ -1,23 +1,43 @@
-name: Sync to NotebookLM Drive
+name: Universal Repo to NotebookLM
 
 on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch: # 允许手动触发
+  # 允许手动触发，并输入 GitHub URL
+  workflow_dispatch:
     inputs:
-      target_path:
-        description: '要扫描的路径 (例如 src/ 或 .)'
+      repo_url:
+        description: '目标 GitHub 项目 URL (例如 https://github.com/langchain-ai/langchain)'
         required: true
-        default: '.'
         type: string
+      branch:
+        description: '分支名 (可选, 默认 main 或 master)'
+        required: false
+        default: ''
 
 jobs:
   build-and-sync:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout content
+    # 1. 检出你自己的仓库 (为了获取 repo2txt.py 和 upload_to_drive.py)
+    - name: Checkout Tool Scripts
       uses: actions/checkout@v4
+      with:
+        path: tools # 把你的脚本放在 tools 目录下，避免和目标仓库混淆
+
+    # 2. 检出目标仓库 (你要分析的那个别人的项目)
+    - name: Clone Target Repository
+      run: |
+        echo "正在克隆: ${{ inputs.repo_url }}"
+        
+        # 组装 clone 命令，使用浅克隆 (--depth 1) 加快速度
+        if [ -z "${{ inputs.branch }}" ]; then
+          git clone --depth 1 ${{ inputs.repo_url }} target_codebase
+        else
+          git clone --depth 1 --branch ${{ inputs.branch }} ${{ inputs.repo_url }} target_codebase
+        fi
+        
+        echo "克隆完成！内容在 target_codebase 目录"
+        ls -F target_codebase/
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -26,23 +46,23 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install google-api-python-client google-auth
+        pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
+    # 3. 运行转换脚本 (注意路径变化)
     - name: Generate Context Markdown
-      # 如果是 push 触发，默认用 '.'；如果是手动触发，用输入的路径
       run: |
-        SCAN_PATH="${{ inputs.target_path }}"
-        if [ -z "$SCAN_PATH" ]; then SCAN_PATH="."; fi
+        # 使用 tools/ 目录下的脚本，去扫描 target_codebase/ 目录
+        python tools/repo2txt.py target_codebase -o codebase_context.md
         
-        echo "Scanning path: $SCAN_PATH"
-        python repo2txt.py "$SCAN_PATH" -o codebase_context.md
+        echo "Markdown 生成完毕，准备上传..."
 
+    # 4. 上传到 Google Drive
     - name: Upload to Google Drive
       env:
-        # 这里改成了新的环境变量
         GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
         GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
-        python upload_to_drive.py
+        # 同样调用 tools/ 下的上传脚本
+        python tools/upload_to_drive.py
