@@ -1,0 +1,37 @@
+name: Sync to NotebookLM Drive
+
+on:
+  push:
+    branches: [ "main", "master" ] # 或者你想要的分支
+    paths-ignore:
+      - '*.md' # 避免自己更新文档时死循环，可根据需要调整
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout content
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install google-api-python-client google-auth
+
+    - name: Generate Context Markdown
+      run: |
+        # 运行你之前的转换脚本
+        python repo2txt.py -o codebase_context.md
+
+    - name: Upload to Google Drive
+      env:
+        GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+        GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      run: |
+        python upload_to_drive.py
