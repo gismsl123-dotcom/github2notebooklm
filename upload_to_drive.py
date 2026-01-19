@@ -26,7 +26,7 @@ def upload_file():
     results = service.files().list(q=query, fields="files(id, name)").execute()
     files = results.get('files', [])
 
-    media = MediaFileUpload(FILE_TO_UPLOAD, mimetype='text/markdown')
+    media = MediaFileUpload(FILE_TO_UPLOAD, mimetype='text/plain')
 
     if files:
         file_id = files[0]['id']
