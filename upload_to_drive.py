@@ -1,11 +1,10 @@
 import os
-import argparse
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # 这里不需要改动文件名，除非你想改
-FILE_TO_UPLOAD = 'codebase_context.md'
+FILE_TO_UPLOAD = os.getenv('TARGET_FILENAME', 'codebase_context.md')
 
 def authenticate():
     # 使用 Refresh Token 构建凭据
@@ -18,7 +17,7 @@ def authenticate():
     )
     return build('drive', 'v3', credentials=creds)
 
-def upload_file(in_path):
+def upload_file():
     folder_id = os.environ['GDRIVE_FOLDER_ID']
     service = authenticate()
     
@@ -27,7 +26,7 @@ def upload_file(in_path):
     results = service.files().list(q=query, fields="files(id, name)").execute()
     files = results.get('files', [])
 
-    media = MediaFileUpload(in_path, mimetype='text/markdown')
+    media = MediaFileUpload(FILE_TO_UPLOAD, mimetype='text/markdown')
 
     if files:
         file_id = files[0]['id']
@@ -49,7 +48,4 @@ def upload_file(in_path):
         print(f"✅ Success: Created new file {FILE_TO_UPLOAD}")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Convert a code repository to a single text file for LLM context.")
-    parser.add_argument("path", nargs="?", default=".", help="Path to the repository (default: current directory)")
-    args = parser.parse_args()
-    upload_file(args.path)
+    upload_file()
