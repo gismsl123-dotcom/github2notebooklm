@@ -1,4 +1,4 @@
-name: Universal Repo to NotebookLM
+name: Universal Repo to NotebookLM (PDF Version)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       branch:
-        description: '分支名 (留空则自动使用默认分支)'
+        description: '分支名 (留空则自动默认)'
         required: false
         default: ''
 
@@ -31,40 +31,51 @@ jobs:
           git clone --depth 1 --branch ${{ inputs.branch }} ${{ inputs.repo_url }} target_codebase
         fi
 
+    # [新增] 安装 Linux 系统库 (WeasyPrint 需要)
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
+    # [修改] 安装 Python 库 (增加 markdown 和 weasyprint)
     - name: Install dependencies
       run: |
         pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+        pip install markdown weasyprint
 
-    # [修改点] 提取项目名，并生成对应文件名的 Markdown
-    - name: Generate Context Markdown
+    # [核心修改] 生成 MD -> 转 PDF
+    - name: Generate PDF Context
       run: |
-        # 1. 从 URL 提取项目名称 (例如: vibe-coding-cn)
         REPO_NAME=$(basename "${{ inputs.repo_url }}" .git)
-        echo "📂 Detected Repo Name: $REPO_NAME"
         
-        # 2. 构造文件名 (例如: vibe-coding-cn.md)
-        FILENAME="${REPO_NAME}.txt"
+        # 定义文件名
+        MD_FILE="${REPO_NAME}.md"
+        PDF_FILE="${REPO_NAME}.pdf"
         
-        # 3. 将文件名保存到 GitHub Environment 变量中，供后续步骤使用
-        echo "TARGET_FILENAME=$FILENAME" >> $GITHUB_ENV
+        echo "📂 Processing: $REPO_NAME"
         
-        # 4. 运行转换脚本，指定输出文件名为刚才构造的名字
-        python tools/repo2txt.py target_codebase -o "$FILENAME"
+        # 1. 先生成 Markdown (中间文件)
+        python tools/repo2txt.py target_codebase -o "$MD_FILE"
         
-        echo "📄 Generated file: $FILENAME"
+        # 2. 再转成 PDF (最终文件)
+        python tools/md2pdf.py "$MD_FILE" "$PDF_FILE"
+        
+        # 3. 设置环境变量供下一步上传
+        echo "TARGET_FILENAME=$PDF_FILE" >> $GITHUB_ENV
+        
+        echo "🎉 Generated PDF: $PDF_FILE"
 
-    # [修改点] 传入 TARGET_FILENAME 环境变量
     - name: Upload to Google Drive
       env:
         GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
         GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-        TARGET_FILENAME: ${{ env.TARGET_FILENAME }} # 读取上一步设置的变量
+        TARGET_FILENAME: ${{ env.TARGET_FILENAME }}
       run: |
         python tools/upload_to_drive.py
